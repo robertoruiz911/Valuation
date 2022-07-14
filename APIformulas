@@ -1,0 +1,37 @@
+
+-------------------------------
+Index Tab
+-------------------------------
+allowed variables:
+Variable		Description
+----------		-----------
+SP50			  S&P 500
+SML			    S&P 600
+R.2000			Russell 2000
+
+Metric			Formula
+-------			-------
+P/E			      FMA_PE(LTM,<mm/dd/yyyy>,<mm/dd/yyy>,D,""PORTAGG"",""MEANR"")		[first is start date, then end date]
+P/E-NTM			  FMA_PE(NTMA,<mm/dd/yyyy>,<mm/dd/yyy>,D,""PORTAGG"",""MEANR"")		[first is start date, then end date]
+P/B			      FMA_PBK(LTM,<mm/dd/yyyy>,<mm/dd/yyy>,D,""PORTAGG"",""MEANR"")		[first is start date, then end date]
+EV/Sales		  FMA_EVAL_SALES(LTM,<mm/dd/yyyy>,<mm/dd/yyy>,D,""PORTAGG"",""MEANR"")	[first is start date, then end date]
+EV to EBITDA	FMA_EVAL_EBITDA(LTM,<mm/dd/yyyy>,<mm/dd/yyy>,D,""PORTAGG"",""MEANR"")	[first is start date, then end date]
+
+Table for Index Tab:
+
+Current:			            Difference(%):
+<date>  Max	Min	Avg	      Max Min Avg
+
+
+
+-------------------------------
+Stock Tab
+-------------------------------
+Metric			  Formula
+-------			  -------
+P/E			      FF_PE(ANN_R,<mm/dd/yyyy>,<mm/dd/yyy>,D)    				                [first is start date, then end date]
+P/E-Est			  FE_VALUATION(PE,MEAN,ANN_ROLL,+1,<mm/dd/yyyy>,<mm/dd/yyy>,D,'')		[first is start date, then end date]
+P/B			      FF_PBK(ANN_R,<mm/dd/yyyy>,<mm/dd/yyy>,D)    				              [first is start date, then end date]
+P/CF			    FF_PCF(ANN_R,<mm/dd/yyyy>,<mm/dd/yyy>,D)    				              [first is start date, then end date]
+EV/Sales		  FF_ENTRPR_VAL_SALES(ANN_R,<mm/dd/yyyy>,<mm/dd/yyy>,D)			        [first is start date, then end date]
+EV/EBITDA		  FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,<mm/dd/yyyy>,<mm/dd/yyy>,D)		    [first is start date, then end date]
