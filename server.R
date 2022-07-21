@@ -1,11 +1,3 @@
-#
-# This is the server logic of a Shiny web application. You can run the
-# application by clicking 'Run App' above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
 library(lubridate)
 library(quantmod)
 library(tidyverse)
@@ -17,32 +9,36 @@ library(shiny)
 library(fredr)
 library(here)
 library(shiny)
+library(httr)
+library(jsonlite)
+source('FSquery.R')
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
-
+  
   
   timeSeries_stock <- reactive({
     
+    ticker <- paste0(toupper(ticker), '-US')
     
     days <- input$end_sp_val -input$start_sp_val
     
-    metricName2 <- ifelse(input$ticker == "P/E", paste("FF_PE(ANN_R,", input$start_up, input$start_down, ",D)", sep = ""),
-                          ifelse(input$ticker == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_up, input$start_down, ",D,'')", sep=""),
-                                 ifelse(input$ticker == "P/B", paste("FF_PBK(ANN_R,", input$start_up, input$start_down, ",D)", sep=""),
-                                        ifelse(input$ticker == "P/CF", paste("FF_PCF(ANN_R,", input$start_up, input$start_down, ",D)", sep=""),
-                                               ifelse(input$ticker == "EV/Sales", paste("FF_ENTRPR_VAL_SALES(ANN_R,", input$start_up, input$start_down, ",D)", sep=""),
-                                                      ifelse(input$ticker == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_up, input$start_down, ",D)", sep=""),   
-                                               NULL))))))
+    metricName2 <- ifelse(input$ticker == "P/E", paste("FF_PE(ANN_R,", input$start_up,",", input$end_up, ",D)", sep = ""),
+                          ifelse(input$ticker == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_up, input$end_up, ",D,'')", sep=""),
+                                 ifelse(input$ticker == "P/B", paste("FF_PBK(ANN_R,", input$start_up, input$end_up, ",D)", sep=""),
+                                        ifelse(input$ticker == "P/CF", paste("FF_PCF(ANN_R,", input$start_up, input$end_up, ",D)", sep=""),
+                                               ifelse(input$ticker == "EV/Sales", paste("FF_ENTRPR_VAL_SALES(ANN_R,", input$start_up, input$end_up, ",D)", sep=""),
+                                                      ifelse(input$ticker == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_up, input$end_up, ",D)", sep=""),   
+                                                             NULL))))))
     
     
     
-
-      timeSeries <-  FSQuery("SP500", metricName2) %>%
-        drop_na() %>%
-        select(1,3) %>%
-        rename(Close = 2)
-
+    
+    timeSeries <-  FSquery(ticker, metricName2) %>%
+      drop_na() %>%
+      select(1,3) %>%
+      rename(Close = 2)
+    
     
     
     
@@ -56,12 +52,12 @@ shinyServer(function(input, output) {
   output$plot_up <- renderPlot({
     
     
-    metricName2 <- ifelse(input$ticker == "P/E", paste("FF_PE(ANN_R,", input$start_up, input$start_down, ",D)", sep = ""),
-                          ifelse(input$ticker == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_up, input$start_down, ",D,'')", sep=""),
-                                 ifelse(input$ticker == "P/B", paste("FF_PBK(ANN_R,", input$start_up, input$start_down, ",D)", sep=""),
-                                        ifelse(input$ticker == "P/CF", paste("FF_PCF(ANN_R,", input$start_up, input$start_down, ",D)", sep=""),
-                                               ifelse(input$ticker == "EV/Sales", paste("FF_ENTRPR_VAL_SALES(ANN_R,", input$start_up, input$start_down, ",D)", sep=""),
-                                                      ifelse(input$ticker == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_up, input$start_down, ",D)", sep=""),   
+    metricName2 <- ifelse(input$ticker == "P/E", paste("FF_PE(ANN_R,", input$start_down, input$end_down, ",D)", sep = ""),
+                          ifelse(input$ticker == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_down, input$end_down, ",D,'')", sep=""),
+                                 ifelse(input$ticker == "P/B", paste("FF_PBK(ANN_R,", input$start_down, input$end_down, ",D)", sep=""),
+                                        ifelse(input$ticker == "P/CF", paste("FF_PCF(ANN_R,", input$start_down, input$end_down, ",D)", sep=""),
+                                               ifelse(input$ticker == "EV/Sales", paste("FF_ENTRPR_VAL_SALES(ANN_R,", input$start_down, input$end_down, ",D)", sep=""),
+                                                      ifelse(input$ticker == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_down, input$end_down, ",D)", sep=""),   
                                                              NULL))))))
     
     timeSeries <- timeSeries_sp_val()
@@ -132,5 +128,5 @@ shinyServer(function(input, output) {
   })
   
   
-
+  
 })
