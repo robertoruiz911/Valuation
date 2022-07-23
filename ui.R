@@ -15,10 +15,10 @@ library(here)
 shinyUI(fluidPage(
   
   # Application title
-  titlePanel("Stock Valuation"),
+  titlePanel("Valuation"),
   
   tabsetPanel(
-    # Sidebar with a slider input for number of bins
+    
     
     tabPanel("Stock",
              sidebarLayout(
@@ -37,7 +37,7 @@ shinyUI(fluidPage(
                                "EV/Sales" = "EV/Sales" ,
                                "EV/EBITDA" = "EV/EBITDA"
                    ),
-                   selected = "P/B",
+                   selected = "P/E",
                    status = "warning"
                  ),
                  dateInput("start_up",
@@ -64,11 +64,14 @@ shinyUI(fluidPage(
                awesomeRadio(
                  inputId = "downside",
                  label = "DOWNSIDE",
-                 choices = c("P/B" = 'P/B' ,
+                 choices = c("P/E" = 'P/E' ,
+                             "P/E Est" = "P/E Est",
+                             "P/B" = "P/B",
+                             "P/CF"= "P/CF",
                              "EV/Sales" = "EV/Sales" ,
-                             "EV/EBITDA" = "EV/EBITDA",
-                             "P/CF"= "P/CF"),
-                 selected = "P/B",
+                             "EV/EBITDA" = "EV/EBITDA"
+                 ),
+                 selected = "P/E",
                  status = "warning"
                ),
                dateInput("start_down",
@@ -83,7 +86,11 @@ shinyUI(fluidPage(
                )
              ),
              
+             # ToDo: there need to be two plots here....one for upside, one for downside with
+             # related data presentations....
              # Show a plot of the generated distribution
+             #
+             
              mainPanel(
                plotOutput("plot2")
              )
