@@ -19,39 +19,46 @@ shinyServer(function(input, output) {
   
   timeSeries_stock <- reactive({
     
-    ticker <- paste0(toupper(ticker), '-US')
+    ticker <- paste0(toupper(input$ticker), '-US')
     
     days <- input$end_sp_val -input$start_sp_val
     
-    metricName2 <- ifelse(input$ticker == "P/E", paste("FF_PE(ANN_R,", input$start_up,",", input$end_up, ",D)", sep = ""),
-                          ifelse(input$ticker == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_up, input$end_up, ",D,'')", sep=""),
-                                 ifelse(input$ticker == "P/B", paste("FF_PBK(ANN_R,", input$start_up, input$end_up, ",D)", sep=""),
-                                        ifelse(input$ticker == "P/CF", paste("FF_PCF(ANN_R,", input$start_up, input$end_up, ",D)", sep=""),
-                                               ifelse(input$ticker == "EV/Sales", paste("FF_ENTRPR_VAL_SALES(ANN_R,", input$start_up, input$end_up, ",D)", sep=""),
-                                                      ifelse(input$ticker == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_up, input$end_up, ",D)", sep=""),   
+    
+    # time series for the 'up' half of the presentation screen
+    metricNameUp <- ifelse(input$ticker == "P/E", paste("FF_PE(ANN_R,", input$start_up,",", input$end_up, ",D)", sep = ""),
+                          ifelse(input$ticker == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_up,",", input$end_up, ",D,'')", sep=""),
+                                 ifelse(input$ticker == "P/B", paste("FF_PBK(ANN_R,", input$start_up,",", input$end_up, ",D)", sep=""),
+                                        ifelse(input$ticker == "P/CF", paste("FF_PCF(ANN_R,", input$start_up,",", input$end_up, ",D)", sep=""),
+                                               ifelse(input$ticker == "EV/Sales", paste("FF_ENTRPR_VAL_SALES(ANN_R,", input$start_up,",", input$end_up, ",D)", sep=""),
+                                                      ifelse(input$ticker == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_up,",", input$end_up, ",D)", sep=""),   
                                                              NULL))))))
-    
-    
-    
-    
-    timeSeries <-  FSquery(ticker, metricName2) %>%
+    timeSeriesUp <-  FSquery(ticker, metricNameUp) %>%
       drop_na() %>%
       select(1,3) %>%
       rename(Close = 2)
     
+    timeSeriesUp <- xts(timeSeriesUp[,2], order.by = timeSeriesUp$date)
     
+    # time series for the 'down' half of the presentation screen
+    metricNameDown <- ifelse(input$ticker == "P/E", paste("FF_PE(ANN_R,", input$start_down,",", input$end_down, ",D)", sep = ""),
+                           ifelse(input$ticker == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_down,",", input$end_down, ",D,'')", sep=""),
+                                  ifelse(input$ticker == "P/B", paste("FF_PBK(ANN_R,", input$start_down,",", input$end_down, ",D)", sep=""),
+                                         ifelse(input$ticker == "P/CF", paste("FF_PCF(ANN_R,", input$start_down,",", input$end_down, ",D)", sep=""),
+                                                ifelse(input$ticker == "EV/Sales", paste("FF_ENTRPR_VAL_SALES(ANN_R,", input$start_down, ",", input$end_down, ",D)", sep=""),
+                                                       ifelse(input$ticker == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_down,",", input$end_down, ",D)", sep=""),   
+                                                              NULL))))))
+    timeSeriesDown <-  FSquery(ticker, metricNameDown) %>%
+      drop_na() %>%
+      select(1,3) %>%
+      rename(Close = 2)
     
-    
-    
-    timeSeries <- xts(timeSeries[,2], order.by = timeSeries$date)
-    
-    
+    timeSeriesDown <- xts(timeSeriesDown[,2], order.by = timeSeriesDown$date)
   })
   
   
   output$plot_up <- renderPlot({
     
-    
+    # question: why are these ifelse statements needed here in the plot function? there is not anther query required....
     metricName2 <- ifelse(input$ticker == "P/E", paste("FF_PE(ANN_R,", input$start_down, input$end_down, ",D)", sep = ""),
                           ifelse(input$ticker == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_down, input$end_down, ",D,'')", sep=""),
                                  ifelse(input$ticker == "P/B", paste("FF_PBK(ANN_R,", input$start_down, input$end_down, ",D)", sep=""),
@@ -60,8 +67,12 @@ shinyServer(function(input, output) {
                                                       ifelse(input$ticker == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_down, input$end_down, ",D)", sep=""),   
                                                              NULL))))))
     
+    # below needs to be updated to reflect currrent sturcture of the app....
     timeSeries <- timeSeries_sp_val()
     
+    
+    
+    #ToDo: there are two plots required here: up and down.  Instead of text on the charts, we need a table published above each of the charts.
     plot <- function(){
       
       chartSeries(timeSeries,
