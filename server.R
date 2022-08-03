@@ -1,4 +1,5 @@
 library(lubridate)
+library(bizdays)
 library(quantmod)
 library(tidyverse)
 library(highcharter)
@@ -11,9 +12,12 @@ library(here)
 library(shiny)
 library(httr)
 library(jsonlite)
+library(padr)
+library(chron)
 source('FSquery.R')
+cal <-  create.calendar(name = "mycal", weekdays=c("saturday", "sunday"))
 
-# Define server logic 
+
 shinyServer(function(input, output) {
   
   
@@ -25,39 +29,24 @@ shinyServer(function(input, output) {
     
     
     # time series for the 'up' half of the presentation screen - testing of queries need to be done here....
-    metricNameUp <- ifelse(input$upside == "P/E", list(paste('P_PRICE(,', input$end_up, ',', input$start_up, ',D,USD)', sep = ""),
+    metricNameUp <- ifelse(input$upside == "P/E", list(paste('P_PRICE(', input$end_up, ',', input$start_up, ',D,USD)', sep = ""),
                                                        paste('FF_EPS(ANN_R,', input$end_up, ',', input$start_up, ',D,,USD)', sep = "")),
                            ifelse(input$upside == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$end_up,",", input$start_up, ",D,'')", sep=""),
-                                  ifelse(input$upside == "P/B", list(paste('P_PRICE(,', input$end_up, ',', input$start_up, ',D,USD)', sep = ""),
+                                  ifelse(input$upside == "P/B", list(paste('P_PRICE(', input$end_up, ',', input$start_up, ',D,USD)', sep = ""),
                                                                      paste('FF_BPS(ANN_R,', input$end_up, ',', input$start_up, ',D,,USD)', sep = "")),
-                                         ifelse(input$upside == "P/CF", list(paste('P_PRICE(,', input$end_up, ',', input$start_up, ',D,USD)', sep = ""),
+                                         ifelse(input$upside == "P/CF", list(paste('P_PRICE(', input$end_up, ',', input$start_up, ',D,USD)', sep = ""),
                                                                              paste('FF_OPER_PS_NET_CF(ANN_R,', input$end_up, ',', input$start_up, ',D,,USD)', sep = "")),
                                                 ifelse(input$upside == "EV/Sales", paste("FF_ENTRPR_VAL_SALES_DAILY(", input$end_up,",", input$start_up, ",D,,,)", sep=""),
                                                        ifelse(input$upside == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER_DAILY(", input$end_up,",", input$start_up, ",D,,,)", sep=""),   
                                                               NULL))))))
     if(input$upside == 'P/E') {
-      timeSeriesUp <-  FSquery(ticker, metricNameUp[1]) / FSquery(ticker, metricNameUp[2])
-      timeSeriesUp <-  timeSeriesUp %>%
-        drop_na() %>%
-        select(1,3) %>%
-        rename(Close = 2)
+      timeSeriesUp <- ratioQuery(ticker, metricNameUp, input$start_up, input$end_up)
     } else if (input$upside == 'P/B') {
-      timeSeriesUp <-  FSquery(ticker, metricNameUp[1]) / FSquery(ticker, metricNameUp[2])
-      timeSeriesUp <-  timeSeriesUp %>%
-        drop_na() %>%
-        select(1,3) %>%
-        rename(Close = 2)
+      timeSeriesUp <- ratioQuery(ticker, metricNameUp, input$start_up, input$end_up)
     } else if (input$upside == 'P/CF') {
-      timeSeriesUp <-  FSquery(ticker, metricNameUp[1]) / FSquery(ticker, metricNameUp[2])
-      timeSeriesUp <-  timeSeriesUp %>%
-        drop_na() %>%
-        select(1,3) %>%
-        rename(Close = 2)
+      timeSeriesUp <- ratioQuery(ticker, metricNameUp, input$start_up, input$end_up)
     } else {
-      timeSeriesUp <-  FSquery(ticker, metricNameUp) %>%
-        drop_na() %>%
-        select(1,3) %>%
-        rename(Close = 2)
+      timeSeriesUp <-  FSquery(ticker, metricNameUp, input$start_up, input$end_up)
     }
 
     timeSeriesUp <- xts(timeSeriesUp[,2], order.by = timeSeriesUp$date)
