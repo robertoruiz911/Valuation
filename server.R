@@ -39,17 +39,14 @@ shinyServer(function(input, output) {
                                                 ifelse(input$upside == "EV/Sales", paste("FF_ENTRPR_VAL_SALES_DAILY(", input$end_up,",", input$start_up, ",D,,,)", sep=""),
                                                        ifelse(input$upside == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER_DAILY(", input$end_up,",", input$start_up, ",D,,,)", sep=""),   
                                                               NULL))))))
-    if(input$upside == 'P/E') {
-      timeSeriesUp <- ratioQuery(ticker, metricNameUp, input$start_up, input$end_up)
-    } else if (input$upside == 'P/B') {
-      timeSeriesUp <- ratioQuery(ticker, metricNameUp, input$start_up, input$end_up)
-    } else if (input$upside == 'P/CF') {
+    if(input$upside == 'P/E' || input$upside == 'P/B' ||  input$upside == 'P/CF') {
       timeSeriesUp <- ratioQuery(ticker, metricNameUp, input$start_up, input$end_up)
     } else {
       timeSeriesUp <-  FSquery(ticker, metricNameUp, input$start_up, input$end_up)
     }
 
     timeSeriesUp <- xts(timeSeriesUp[,2], order.by = timeSeriesUp$date)
+    colnames(timeSeriesUp)[1] <- 'Close'
     timeSeriesUp 
     
   })
@@ -63,71 +60,76 @@ shinyServer(function(input, output) {
     days <- input$end_down -input$start_down
     
     
-    
     # time series for the 'down' half of the presentation screen
-    metricNameDown <- ifelse(input$downside == "P/E", paste("FF_PE(ANN_R,", input$start_down,",", input$end_down, ",D)", sep = ""),
-                             ifelse(input$downside == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_down,",", input$end_down, ",D,'')", sep=""),
-                                    ifelse(input$downside == "P/B", paste("FF_PBK(ANN_R,", input$start_down,",", input$end_down, ",D)", sep=""),
-                                           ifelse(input$downside == "P/CF", paste("FF_PCF(ANN_R,", input$start_down,",", input$end_down, ",D)", sep=""),
-                                                  ifelse(input$downside == "EV/Sales", paste("FF_ENTRPR_VAL_SALES(ANN_R,", input$start_down, ",", input$end_down, ",D)", sep=""),
-                                                         ifelse(input$downside == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_down,",", input$end_down, ",D)", sep=""),   
-                                                                NULL))))))
-    timeSeriesDown <-  FSquery(ticker, metricNameDown) %>%
-      drop_na() %>%
-      select(1,3) %>%
-      rename(Close = 2)
+    metricNameDown <- ifelse(input$downside == "P/E", list(paste('P_PRICE(', input$end_down, ',', input$start_down, ',D,USD)', sep = ""),
+                                                           paste('FF_EPS(ANN_R,', input$end_down, ',', input$start_down, ',D,,USD)', sep = "")),
+                           ifelse(input$downside == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$end_down,",", input$start_down, ",D,'')", sep=""),
+                                  ifelse(input$downside == "P/B", list(paste('P_PRICE(', input$end_down, ',', input$start_down, ',D,USD)', sep = ""),
+                                                                       paste('FF_BPS(ANN_R,', input$end_down, ',', input$start_down, ',D,,USD)', sep = "")),
+                                         ifelse(input$downside == "P/CF", list(paste('P_PRICE(', input$end_down, ',', input$start_down, ',D,USD)', sep = ""),
+                                                                               paste('FF_OPER_PS_NET_CF(ANN_R,', input$end_down, ',', input$start_down, ',D,,USD)', sep = "")),
+                                                ifelse(input$downside == "EV/Sales", paste("FF_ENTRPR_VAL_SALES_DAILY(", input$end_down,",", input$start_down, ",D,,,)", sep=""),
+                                                       ifelse(input$downside == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER_DAILY(", input$end_down,",", input$start_down, ",D,,,)", sep=""),   
+                                                              NULL))))))
+    if(input$downside == 'P/E' || input$downside == 'P/B' ||  input$downside == 'P/CF') {
+      timeSeriesDown <- ratioQuery(ticker, metricNameDown, input$start_down, input$end_down)
+    } else {
+      timeSeriesDown <-  FSquery(ticker, metricNameDown, input$start_down, input$end_down)
+    }
     
     timeSeriesDown <- xts(timeSeriesDown[,2], order.by = timeSeriesDown$date)
+    colnames(timeSeriesDown)[1] <- 'Close'
     timeSeriesDown 
   })
   
-  
+  # plots the up chart
   output$plot_up <- renderPlot({
     
     # question: why are these ifelse statements needed here in the plot function? there is not anther query required....
     ## Answer: This is used only for the title of the chart
-    metricNameUp <- ifelse(input$upside == "P/E", paste("FF_PE(ANN_R,", input$start_up,",", input$end_up, ",D)", sep = ""),
-                           ifelse(input$upside == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_up,",", input$end_up, ",D,'')", sep=""),
-                                  ifelse(input$upside == "P/B", paste("FF_PBK(ANN_R,", input$start_up,",", input$end_up, ",D)", sep=""),
-                                         ifelse(input$upside == "P/CF", paste("FF_PCF(ANN_R,", input$start_up,",", input$end_up, ",D)", sep=""),
-                                                ifelse(input$upside == "EV/Sales", paste("FF_ENTRPR_VAL_SALES(ANN_R,", input$start_up,",", input$end_up, ",D)", sep=""),
-                                                       ifelse(input$upside == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_up,",", input$end_up, ",D)", sep=""),   
+    chartTitleUp <- ifelse(input$upside == "P/E", "P/E",
+                           ifelse(input$upside == "P/E Est", "P/E NTM",
+                                  ifelse(input$upside == "P/B", "P/B",
+                                         ifelse(input$upside == "P/CF", "P/CF",
+                                                ifelse(input$upside == "EV/Sales", "EV/Sales",
+                                                       ifelse(input$upside == "EV/EBITDA", "EV/EBITDA",   
                                                               NULL))))))
     # below needs to be updated to reflect current structure of the app....
-    timeSeries <- timeSeries_stock_up()
+    timeSeriesUp <- timeSeries_stock_up()
     
     
     
     #ToDo: there are two plots required here: up and down.  Instead of text on the charts, we need a table published above each of the charts.
     plot <- function(){
       
-      chartSeries(timeSeries,
-                  name = metricNameUp,
+      
+      chartSeries(timeSeriesUp,
+                  name = chartTitleUp,
                   type="line",
                   theme=chartTheme('white'))
       ### Text
       
-      max <- round(max(timeSeries$Close),1)
-      min <- round(min(timeSeries$Close),1)
-      mean <- round(mean(timeSeries$Close),1)
+      maxUp <- round(max(timeSeriesUp$Close),1)
+      minUp <- round(min(timeSeriesUp$Close),1)
+      meanUp <- round(mean(timeSeriesUp$Close),1)
       
       
-      max <- paste("Max.:", max)  
-      min <- paste("Min.:", min)
-      mean <- paste("Avg.:", mean)
+      maxUp <- paste("Max.:", maxUp)  
+      minUp <- paste("Min.:", minUp)
+      meanUp <- paste("Avg.:", meanUp)
       #######################################################
       
-      timeSeries <- as.data.frame(timeSeries)
-      timeSeries$date <- as_date(row.names(timeSeries))
+      timeSeriesUp <- as.data.frame(timeSeriesUp)
+      timeSeriesUp$date <- as_date(row.names(timeSeriesUp))
       
-      max_date <- max(timeSeries$date)
-      min_date <- min(timeSeries$date)
+      max_dateUp <- max(timeSeriesUp$date)
+      min_dateUp <- min(timeSeriesUp$date)
       
       ### Difference selected period
       
-      one <- subset(timeSeries, timeSeries$date == max_date | timeSeries$date == min_date)
+      one <- subset(timeSeriesUp, timeSeriesUp$date == max_dateUp | timeSeriesUp$date == min_dateUp)
       
-      period <- max_date - min_date
+      period <- max_dateUp - min_dateUp
       period
       
       change <- (one$Close[2] - one$Close[1]) / one$Close[1]
@@ -138,26 +140,28 @@ shinyServer(function(input, output) {
       ############################################################################
       ## one year
       
-      max_date <- max(timeSeries$date)
-      one_year <- max_date -365
+      max_dateUp <- max(timeSeriesUp$date)
+      one_year <- max_dateUp -365
       
-      one_year <- subset(timeSeries, timeSeries$date >=  one_year)
+      one_year <- subset(timeSeriesUp, timeSeriesUp$date >=  one_year)
       
       one_year <- subset(one_year, one_year$date == min(one_year$date) | one_year$date == max(one_year$date))
       
       change_1year <- (one_year$Close[2] - one_year$Close[1])/one_year$Close[1]
       change_1year*100
       
-      if(input$end_sp_val - input$start_sp_val >= 365){
+      if(input$end_Up - input$start_Up >= 365){
         change_1year <-  paste("1Y Change:", round(change_1year*100,2), "%")
       }else{change_1year <-  paste("1Y Change:", "NA")}
       
-      text <- paste(max, min, mean, change, change_1year, sep = "     ")
+      text <- paste(maxUp, minUp, meanUp, change, change_1year, sep = "     ")
       
       
       mtext(text, side=1, outer=FALSE, cex = 0.75)
       
     }
+    
+    
     
     plot()
     
@@ -165,54 +169,54 @@ shinyServer(function(input, output) {
   })
   
   
-  
+  # plots the down chart
   output$plot_down <- renderPlot({
     
     # question: why are these ifelse statements needed here in the plot function? there is not anther query required....
     ## Answer: This is used only for the title of the chart
-    metricNameDown <- ifelse(input$downside == "P/E", paste("FF_PE(ANN_R,", input$start_down,",", input$end_down, ",D)", sep = ""),
-                             ifelse(input$downside == "P/E Est", paste("FE_VALUATION(PE,MEAN,ANN_ROLL,+1,", input$start_down,",", input$end_down, ",D,'')", sep=""),
-                                    ifelse(input$downside == "P/B", paste("FF_PBK(ANN_R,", input$start_down,",", input$end_down, ",D)", sep=""),
-                                           ifelse(input$downside == "P/CF", paste("FF_PCF(ANN_R,", input$start_down,",", input$end_down, ",D)", sep=""),
-                                                  ifelse(input$downside == "EV/Sales", paste("FF_ENTRPR_VAL_SALES(ANN_R,", input$start_down, ",", input$end_down, ",D)", sep=""),
-                                                         ifelse(input$downside == "EV/EBITDA", paste("FF_ENTRPR_VAL_EBITDA_OPER(ANN_R,", input$start_down,",", input$end_down, ",D)", sep=""),   
+    metricNameDown <- ifelse(input$downside == "P/E", "P/E",
+                             ifelse(input$downside == "P/E Est", "P/E NTM",
+                                    ifelse(input$downside == "P/B", "P/B",
+                                           ifelse(input$downside == "P/CF", "P/CF",
+                                                  ifelse(input$downside == "EV/Sales", "EV/Sales",
+                                                         ifelse(input$downside == "EV/EBITDA", "EV/EBITDA",   
                                                                 NULL))))))
     
     # below needs to be updated to reflect current structure of the app....
-    timeSeries <- timeSeries_stock_down()
+    timeSeriesDown <- timeSeries_stock_down()
     
     
     
     #ToDo: there are two plots required here: up and down.  Instead of text on the charts, we need a table published above each of the charts.
     plot <- function(){
       
-      chartSeries(timeSeries,
+      chartSeries(timeSeriesDown,
                   name = metricNameDown,
                   type="line",
                   theme=chartTheme('white'))
       ### Text
       
-      max <- round(max(timeSeries$Close),1)
-      min <- round(min(timeSeries$Close),1)
-      mean <- round(mean(timeSeries$Close),1)
+      maxDown <- round(max(timeSeriesDown$Close),1)
+      minDown <- round(min(timeSeriesDown$Close),1)
+      meanDown <- round(mean(timeSeriesDown$Close),1)
       
       
-      max <- paste("Max.:", max)  
-      min <- paste("Min.:", min)
-      mean <- paste("Avg.:", mean)
+      maxDown <- paste("Max.:", maxDown)  
+      minDown <- paste("Min.:", minDown)
+      meanDown <- paste("Avg.:", meanDown)
       #######################################################
       
-      timeSeries <- as.data.frame(timeSeries)
-      timeSeries$date <- as_date(row.names(timeSeries))
+      timeSeriesDown <- as.data.frame(timeSeriesDown)
+      timeSeriesDown$date <- as_date(row.names(timeSeriesDown))
       
-      max_date <- max(timeSeries$date)
-      min_date <- min(timeSeries$date)
+      max_dateDown <- max(timeSeriesDown$date)
+      min_dateDown <- min(timeSeriesDown$date)
       
       ### Difference selected period
       
-      one <- subset(timeSeries, timeSeries$date == max_date | timeSeries$date == min_date)
+      one <- subset(timeSeriesDown, timeSeriesDown$date == max_dateDown | timeSeriesDown$date == min_dateDown)
       
-      period <- max_date - min_date
+      period <- max_dateDown - min_dateDown
       period
       
       change <- (one$Close[2] - one$Close[1]) / one$Close[1]
@@ -223,10 +227,10 @@ shinyServer(function(input, output) {
       ############################################################################
       ## one year
       
-      max_date <- max(timeSeries$date)
-      one_year <- max_date -365
+      max_dateDown <- max(timeSeriesDown$date)
+      one_year <- max_dateDown -365
       
-      one_year <- subset(timeSeries, timeSeries$date >=  one_year)
+      one_year <- subset(timeSeriesDown, timeSeriesDown$date >=  one_year)
       
       one_year <- subset(one_year, one_year$date == min(one_year$date) | one_year$date == max(one_year$date))
       
@@ -237,7 +241,7 @@ shinyServer(function(input, output) {
         change_1year <-  paste("1Y Change:", round(change_1year*100,2), "%")
       }else{change_1year <-  paste("1Y Change:", "NA")}
       
-      text <- paste(max, min, mean, change, change_1year, sep = "     ")
+      text <- paste(maxDown, minDown, meanDown, change, change_1year, sep = "     ")
       
       
       mtext(text, side=1, outer=FALSE, cex = 0.75)
