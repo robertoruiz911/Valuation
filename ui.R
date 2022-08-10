@@ -25,7 +25,7 @@ shinyUI(fluidPage(
                
                sidebarPanel(
                  
-                 textInput("ticker", "Ticker"),
+                 textInput("ticker", "Ticker", value = 'ROK'),
                  
                  awesomeRadio(
                    inputId = "upside",
@@ -42,7 +42,7 @@ shinyUI(fluidPage(
                  ),
                  dateInput("start_up",
                            "Start Date",
-                           Sys.Date() - years(1),
+                           Sys.Date() - years(10),
                            format = "yyyy-mm-dd"
                  ),
                  dateInput("end_up",
@@ -76,7 +76,7 @@ shinyUI(fluidPage(
                ),
                dateInput("start_down",
                          "Start Date",
-                         Sys.Date() - years(1),
+                         Sys.Date() - years(10),
                          format = "yyyy-mm-dd"
                ),
                dateInput("end_down",
@@ -92,7 +92,7 @@ shinyUI(fluidPage(
              #
              
              mainPanel(
-               plotOutput("plot2")
+               plotOutput("plot_down")
              )
              
     ),
