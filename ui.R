@@ -31,11 +31,13 @@ shinyUI(fluidPage(
                    inputId = "upside",
                    label = "UPSIDE",
                    choices = c("P/E" = 'P/E' ,
-                               "P/E Est" = "P/E Est",
+                               "P/E NTM" = "P/E NTM",
+                               "P/E NTM vs S&P500" = "P/E NTM vs S&P500",
                                "P/B" = "P/B",
                                "P/CF"= "P/CF",
                                "EV/Sales" = "EV/Sales" ,
-                               "EV/EBITDA" = "EV/EBITDA"
+                               "EV/EBITDA" = "EV/EBITDA",
+                               "EV/EBITDA vs S&P500" = "EV/EBITDA vs S&P500"
                    ),
                    selected = "P/E",
                    status = "warning"
@@ -54,7 +56,17 @@ shinyUI(fluidPage(
                
                # Show a plot of the generated distribution
                mainPanel(
-                 plotOutput("plot_up")
+                tabsetPanel(
+                  tabPanel(
+                    title = "Plot",
+                    plotOutput("plot_up")
+                  ),
+                  tabPanel(
+                    title = "Backtest",
+                    dataTableOutput('table_upside'),
+                    dataTableOutput('backtest_upside')
+                  )
+                )
                )
              ),
              
@@ -65,11 +77,13 @@ shinyUI(fluidPage(
                  inputId = "downside",
                  label = "DOWNSIDE",
                  choices = c("P/E" = 'P/E' ,
-                             "P/E Est" = "P/E Est",
+                             "P/E NTM" = "P/E NTM",
+                             "P/E NTM vs S&P500" = "P/E NTM vs S&P500",
                              "P/B" = "P/B",
                              "P/CF"= "P/CF",
                              "EV/Sales" = "EV/Sales" ,
-                             "EV/EBITDA" = "EV/EBITDA"
+                             "EV/EBITDA" = "EV/EBITDA",
+                             "EV/EBITDA vs S&P500" = "EV/EBITDA vs S&P500"
                  ),
                  selected = "P/E",
                  status = "warning"
@@ -92,7 +106,16 @@ shinyUI(fluidPage(
              #
              
              mainPanel(
-               plotOutput("plot_down")
+              tabsetPanel(  
+                tabPanel(
+                  title = 'Plot',
+                  plotOutput("plot_down")
+                ),
+                tabPanel(
+                  title = 'Backtest',
+                  dataTableOutput('table_downside')
+                )
+              )
              )
              
     ),
