@@ -56,9 +56,9 @@ shinyServer(function(input, output) {
       if(input$upside == 'P/E NTM vs S&P500') {
         timeSeriesUp <-  relativeQuery(ticker, metricNameUp, input$start_up, input$end_up)
       } else {
-        numerator <- FSquery(ticker, toString(metricNameUp), startDay, endDay)
+        numerator <- FSquery(ticker, toString(metricNameUp), input$start_up, input$end_up)
         formula <- paste("FMA_EVAL_EBITDA(NTMA,", input$end_up,",", input$start_up, ",,)", sep="")
-        denominator <- FSquery('SP50', formula , startDay, endDay)
+        denominator <- FSquery('SP50', formula , input$start_up, input$end_up)
         timeSeriesUp <- merge(numerator, denominator,by='date' , all = TRUE)
         timeSeriesUp <- timeSeriesUp[order(timeSeriesUp$date),]
         colnames(timeSeriesUp)[2] <- 'numerator'
@@ -117,11 +117,11 @@ shinyServer(function(input, output) {
     
     if(input$downside == 'P/E NTM vs S&P500' || input$downside == 'EV/EBITDA vs S&P500') {
       if(input$downside == 'P/E NTM vs S&P500') {  
-        timeSeriesDown <-  relativeQuery(ticker, metricNameDown, input$start_up, input$end_up)
+        timeSeriesDown <-  relativeQuery(ticker, metricNameDown, input$start_down, input$end_down)
       } else {
-        numerator <- FSquery(ticker, toString(metricNameDown), startDay, endDay)
-        formula <- paste("FMA_EVAL_EBITDA(NTMA,", input$end_up,",", input$start_up, ",,)", sep="")
-        denominator <- FSquery('SP50', formula , startDay, endDay)
+        numerator <- FSquery(ticker, toString(metricNameDown), input$start_down, input$end_down)
+        formula <- paste("FMA_EVAL_EBITDA(NTMA,", input$end_down,",", input$start_down, ",,)", sep="")
+        denominator <- FSquery('SP50', formula , input$start_down, input$end_down)
         timeSeriesDown <- merge(numerator, denominator,by='date' , all = TRUE)
         timeSeriesDown <- timeSeriesDown[order(timeSeriesDown$date),]
         colnames(timeSeriesDown)[2] <- 'numerator'
@@ -291,6 +291,7 @@ shinyServer(function(input, output) {
   })
   
   output$backtest_upside < - renderDataTable({
+    ticker <- paste0(toupper(input$ticker), '-US')
     trailPeriods <- 20
     df <- timeSeries_stock_up()
     #df <- df[, c('date', 'Close')]
@@ -327,8 +328,10 @@ shinyServer(function(input, output) {
     headerRow <- data.frame(start='1SD', end='', Yr1='', Yr2='', Yr3='')
 
 
-    SD1data <- getBacktest(df, dates1)
-    SD2data <- getBacktest(df, dates2)
+    SD1data <- getBacktest(df, dates1, ticker)
+    SD2data <- getBacktest(df, dates2, ticker)
+
+    # make adjustmets here....
     val <- rbind(SD1data, SD2data)
     #val <- as.data.frame(val)
     datatable(val, filter = 'none',
