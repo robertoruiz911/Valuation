@@ -1,0 +1,271 @@
+
+
+
+
+FSquery <- function(ticker, formula, startDay, endDay) {
+  
+  
+  time_series_endpoint  <- 'https://api.factset.com/formula-api/v1/time-series'
+  request = list(data = list(ids=list(ticker),
+                             formulas=list(formula),
+                             flatten="Y")) #Use the flatten parameter flatten to return a flat, table-like JSON response model instead of the standard nested JSON response model. 
+  # The flattened data model returned with flatten=Y easily converts to a standard R DataFrame.
+  
+  #3.1b `/formula-api/v1/time-series` - Pull data and view results 
+  
+  response  <- httr::POST(time_series_endpoint ,authenticate(username,password,type="basic"),body=(request),
+                          add_headers(Accept='application/json'),encode='json')
+  
+  output <- rawToChar(response$content)
+  prettify(output, indent = 2)
+  json <- fromJSON(output)[['data']]
+  df <- data.frame(json) 
+  df <- df[ , c(3,2)]
+  names(df)[2] <- 'values'
+  df$date <- as.Date(df$date)
+  df <-  df %>%
+    drop_na() %>%
+    select(1,2) %>%
+    rename(Close = 2)
+  workDays <- bizdays(startDay, endDay, cal)
+  if(nrow(df) < workDays-10) {
+    df <- pad(df, start_val=startDay, end_val=endDay)
+    df <- df[!chron::is.weekend(as.Date(df$date, "%Y-%m-%d")), ]
+    df <- df %>% fill(Close)
+  }
+  df <- df %>%
+    drop_na()
+  return(df)
+}
+
+ratioQuery <- function(ticker, metricNameUp, startDay, endDay) {
+  numerator <- FSquery(ticker, toString(metricNameUp[1]), startDay, endDay)
+  #print('numerator done')
+  #print(numerator)
+  #print(metricNameUp[2])
+  denominator <- FSquery(ticker, toString(metricNameUp[2]), startDay, endDay)
+  #print('Numerator and denominator procured')
+  #print(denominator)
+  timeSeriesUp <- merge(numerator, denominator,by='date' , all = TRUE)
+  timeSeriesUp <- timeSeriesUp[order(timeSeriesUp$date),]
+  colnames(timeSeriesUp)[2] <- 'numerator'
+  colnames(timeSeriesUp)[3] <- 'denominator'
+  timeSeriesUp <- timeSeriesUp %>% fill(denominator)
+  timeSeriesUp <- timeSeriesUp[complete.cases(timeSeriesUp), ]
+  timeSeriesUp$value <- timeSeriesUp$numerator / timeSeriesUp$denominator
+  timeSeriesUp <-  timeSeriesUp %>%
+    drop_na() %>%
+    select(1,4) %>%
+    rename(Close = 2)
+  #print(timeSeriesUp)
+  return(timeSeriesUp)
+}
+
+relativeQuery <- function(ticker, metricNameUp, startDay, endDay) {
+  numerator <- FSquery(ticker, toString(metricNameUp), startDay, endDay)
+  denominator <- FSquery('SP50', toString(metricNameUp), startDay, endDay)
+  timeSeriesUp <- merge(numerator, denominator,by='date' , all = TRUE)
+  timeSeriesUp <- timeSeriesUp[order(timeSeriesUp$date),]
+  colnames(timeSeriesUp)[2] <- 'numerator'
+  colnames(timeSeriesUp)[3] <- 'denominator'
+  timeSeriesUp <- timeSeriesUp %>% fill(denominator)
+  timeSeriesUp <- timeSeriesUp[complete.cases(timeSeriesUp), ]
+  timeSeriesUp$value <- timeSeriesUp$numerator / timeSeriesUp$denominator
+  timeSeriesUp <-  timeSeriesUp %>%
+    drop_na() %>%
+    select(1,4) %>%
+    rename(Close = 2)
+  return(timeSeriesUp)
+}
+
+getPrice <- function(ticker) {
+  time_series_endpoint  <- 'https://api.factset.com/formula-api/v1/time-series'
+  request = list(data = list(ids=list(ticker),
+                             formulas=list('FG_PRICE(0)'),
+                             flatten="Y")) #Use the flatten parameter flatten to return a flat, table-like JSON response model instead of the standard nested JSON response model. 
+  # The flattened data model returned with flatten=Y easily converts to a standard R DataFrame.
+  
+  #3.1b `/formula-api/v1/time-series` - Pull data and view results 
+  
+  response  <- httr::POST(time_series_endpoint ,authenticate(username,password,type="basic"),body=(request),
+                          add_headers(Accept='application/json'),encode='json')
+  
+  output <- rawToChar(response$content)
+  prettify(output, indent = 2)
+  json <- fromJSON(output)[['data']]
+  df <- data.frame(json) 
+  df <- df[ , c(3,2)]
+  names(df)[2] <- 'values'
+  df$date <- as.Date(df$date)
+  df <-  df %>%
+    drop_na() %>%
+    select(1,2) %>%
+    rename(Close = 2)
+  
+  price <- as.numeric(df$Close[1])
+  return(price)
+}
+
+getName <- function(ticker) {
+  time_series_endpoint  <- 'https://api.factset.com/formula-api/v1/time-series'
+  request = list(data = list(ids=list(ticker),
+                             formulas=list('FG_COMPANY_NAME'),
+                             flatten="Y")) #Use the flatten parameter flatten to return a flat, table-like JSON response model instead of the standard nested JSON response model. 
+  # The flattened data model returned with flatten=Y easily converts to a standard R DataFrame.
+  
+  #3.1b `/formula-api/v1/time-series` - Pull data and view results 
+  
+  response  <- httr::POST(time_series_endpoint ,authenticate(username,password,type="basic"),body=(request),
+                          add_headers(Accept='application/json'),encode='json')
+  
+  output <- rawToChar(response$content)
+  prettify(output, indent = 2)
+  json <- fromJSON(output)[['data']]
+  df <- data.frame(json) 
+  #df <- df[ , c(3,2)]
+  names(df)[2] <- 'values'
+  #df$date <- as.Date(df$date)
+  #df <-  df %>%
+  #  drop_na() %>%
+  #  select(1,2) %>%
+  #  rename(Close = 2)
+  
+  name <- df$values[1]
+  return(name)
+}
+
+getBacktest <- function(timeSeries, dates, ticker) {
+  
+  returnData <- timeSeries
+  returnData <- Return.calculate(returnData, method='log')
+  returnData <- returnData[complete.cases(returnData), ]
+
+  endDate <- as.Date(end(returnData))
+    # df <- data.frame(date = index(df), coredata(df))
+
+  
+  result <- data.frame()
+  for(date in dates) {
+    date <- as.Date(date)
+    returnSeries <- returnData[paste0(date,'/')]
+    #returnSeries$return <- with(returnSeries, c(diff(log(returnSeries$Close)), NA))
+    #df is already log returns
+    returnSeries <- returnSeries[complete.cases(returnSeries),]
+
+    startDate <- as.Date(date)
+    yr1Date <- startDate + years(1)
+    yr2Date <- startDate + years(2)
+    yr3Date <- startDate + years(3)
+
+    return1 <- returnSeries[paste(startDate,yr1Date,sep="::")]
+    return2 <- returnSeries[paste(startDate,yr2Date,sep="::")]
+    return3 <- returnSeries[paste(startDate,yr3Date,sep="::")]
+    
+    # Creating NA if there is not enough time going forward, so only annualize 2 and 3 years
+    # annualize return:
+    #months1 <- nmonths(return1)
+    #months2 <- nmonths(return2)
+    #months3 <- nmonths(return3)
+    
+    # Returns
+    if(yr1Date - startDate < 365) {
+      Yr1return <- 'NA'
+    } else {
+      Yr1return <- sum(return1)
+    }
+    if(yr2Date - startDate < 730) {
+      Yr2return <- 'NA'
+    } else {
+      Yr2return <- sum(return2) / 2
+    }
+    if(yr3Date - startDate < 1095) {
+      Yr3return <- 'NA'
+    } else {
+      Yr3return <- sum(return3) / 3
+    }
+    
+    # procure sector returns
+    sector <- getSector(ticker)
+    sectorTicker <- getETF(sector)
+    #sectorTicker <- paste0(toupper(sectorTicker), '-US')
+    sectorPrices <- getSymbols(sectorTicker, from=startDate, to=yr3Date, src='yahoo', warnings=FALSE, auto.assign=FALSE )
+    sectorPrices <- sectorPrices[,6]
+    colnames(sectorPrices) <- 'value'
+    sectorReturns <- Return.calculate(sectorPrices, method='log')
+    sectorReturns <- sectorReturns[complete.cases(sectorReturns), ]
+    
+    sectorReturn1 <- sectorReturns[paste(startDate,yr1Date,sep="::")]
+    sectorReturn2 <- sectorReturns[paste(startDate,yr2Date,sep="::")]
+    sectorReturn3 <- sectorReturns[paste(startDate,yr3Date,sep="::")]
+    
+    # Returns
+    if(yr1Date - startDate < 365) {
+      Yr1SectorReturn <- 'NA'
+    } else {
+      Yr1SectorReturn <- sum(sectorReturn1)
+    }
+    if(yr2Date - startDate < 730) {
+      Yr2SectorReturn <- 'NA'
+    } else {
+      Yr2SectorReturn <- sum(sectorReturn2) / 2
+    }
+    if(yr3Date - startDate < 1095) {
+      Yr3SectorReturn <- 'NA'
+    } else {
+      Yr3SectorReturn <- sum(sectorReturn3) / 3
+    }
+    
+    temp <- data.frame(start=startDate, 
+                       end=yr3Date,
+                       Year1=Yr1return,
+                       SectorYr1=Yr1SectorReturn,
+                       Year2=Yr2return,
+                       SectorYr2=Yr2SectorReturn,
+                       Year3=Yr3return,
+                       SectorYr3=Yr3SectorReturn)
+    if(nrow(result)==0) {result <- temp} else {result <- rbind(result, temp)}
+    #print(temp)
+    #Sys.sleep(5)
+  }
+
+  return(result)
+}
+
+getSector <- function(ticker) {
+  time_series_endpoint  <- 'https://api.factset.com/formula-api/v1/time-series'
+  request = list(data = list(ids=list(ticker),
+                             formulas=list('FG_GICS_SECTOR'),
+                             flatten="Y")) #Use the flatten parameter flatten to return a flat, table-like JSON response model instead of the standard nested JSON response model. 
+  # The flattened data model returned with flatten=Y easily converts to a standard R DataFrame.
+  
+  #3.1b `/formula-api/v1/time-series` - Pull data and view results 
+  
+  response  <- httr::POST(time_series_endpoint ,authenticate(username,password,type="basic"),body=(request),
+                          add_headers(Accept='application/json'),encode='json')
+  
+  output <- rawToChar(response$content)
+  prettify(output, indent = 2)
+  json <- fromJSON(output)[['data']]
+  df <- data.frame(json) 
+  #df <- df[ , c(3,2)]
+  names(df)[2] <- 'values'
+  #df$date <- as.Date(df$date)
+  #df <-  df %>%
+  #  drop_na() %>%
+  #  select(1,2) %>%
+  #  rename(Close = 2)
+  
+  sector <- df$values[1]
+  
+  return(sector)
+}
+
+getETF <- function(sector) {
+  sectorDictionary <- data.frame(sector= c('Information Technology', 'Health Care', 'Financials', 'Real Estate',
+                                           'Energy', 'Materials', 'Consumer Discretionary', 'Industrials',
+                                           'Utilities', 'Consumer Staples', 'Communication Services'),
+                                 ticker= c('XLK', 'XLV', 'XLF', 'XLRE', 'XLE', 'XLB', 'XLY',
+                                           'XLI', 'XLU', 'XLP', 'XLC'))
+  ETF <- sectorDictionary$ticker[sectorDictionary$sector==sector]
+  return(ETF)
+}
