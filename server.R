@@ -17,7 +17,7 @@ library(DT)
 library(PerformanceAnalytics)
 #library(chron)
 source('FSquery.R')
-cal <-  create.calendar(name = "mycal", weekdays=c("saturday", "sunday"))
+
 
 
 shinyServer(function(input, output) {
@@ -48,9 +48,13 @@ shinyServer(function(input, output) {
         metricNameUp <- paste("FF_ENTRPR_VAL_SALES_DAILY(", input$end_up,",", input$start_up, ",D,,,)", sep="")
     } else if (input$upside == 'EV/EBITDA') {
         metricNameUp <- paste("FF_ENTRPR_VAL_EBITDA_OPER_DAILY(", input$end_up,",", input$start_up, ",D,,,)", sep="")
-    } else { 
+    } else {#(input$upside == 'EV/EBITDA vs S&P500') {
         metricNameUp <- paste("FF_ENTRPR_VAL_EBITDA_OPER_DAILY(", input$end_up,",", input$start_up, ",D,,,)", sep="")
-    }
+    } #else {
+      #  metricNameUp <- paste("FF_DIV_YLD(ANN,", input$end_up,",", input$start_up, ",D)", sep="")
+    #}
+    
+    
     
     if(input$upside == 'P/E NTM vs S&P500' || input$upside == 'EV/EBITDA vs S&P500') {
       if(input$upside == 'P/E NTM vs S&P500') {
@@ -249,7 +253,7 @@ shinyServer(function(input, output) {
     
   })
   
-  # Presents statistics
+  # Presents SD statistics
   output$table_upside <- renderDataTable({
     ticker <- paste0(toupper(input$ticker), '-US')
     
@@ -290,7 +294,8 @@ shinyServer(function(input, output) {
                                                targets = 0:6))))
   })
   
-  output$backtest_upside < - renderDataTable({
+  # Presents backtest results
+  output$backtest_upside <- renderDataTable({
     ticker <- paste0(toupper(input$ticker), '-US')
     trailPeriods <- 20
     df <- timeSeries_stock_up()
@@ -307,37 +312,76 @@ shinyServer(function(input, output) {
       select(date, Close) %>%
       mutate(tma = rollmean(Close, k = trailPeriods, fill = NA, align = "right"))
 
-
+    # examine -1SD
     triggerDates1 <- filter(temp, tma < trigger1 & tma > trigger2)
 
     triggerDates1 <- triggerDates1 %>%
       mutate(under1SD=ifelse(date - lag(date, 1) < 4,1,0))
-    triggerDates1[is.na(triggerDates1)] = 0
-    #triggerDates1 <- triggerDates1[complete.cases(triggerDates1), ]
+    #triggerDates1[is.na(triggerDates1)] = 0
+    triggerDates1 <- triggerDates1[complete.cases(triggerDates1), ]
 
     changeDates1 <- triggerDates1 %>%  filter(under1SD==1 & lag(under1SD,1)==0)
     dates1 <- changeDates1$date
-
+    
+    # add potential 1st date if it is under 1SD
+    if(length(dates1)>0) {
+      firstDay1 <- head(triggerDates1, 1)
+      if(firstDay1$under1SD == 1) {
+        dates1 <- append(firstDay1$date, dates1)
+      }
+    }
+      
+    # examine -2SD...
     triggerDates2 <- filter(temp, tma < trigger2)
     triggerDates2 <- triggerDates2 %>%
       mutate(under2SD=ifelse(date - lag(date, 1) < 4,1,0))
-    triggerDates2[is.na(triggerDates2)] = 0
+    #triggerDates2[is.na(triggerDates2)] = 0
+    triggerDates2 <- triggerDates2[complete.cases(triggerDates2), ]
+    
     changeDates2 <- triggerDates2 %>%  filter(under2SD==1 & lag(under2SD,1)==0)
     dates2 <- changeDates2$date
 
-    headerRow <- data.frame(start='1SD', end='', Yr1='', Yr2='', Yr3='')
-
-
+    # add potential 1st date if it is under 2SD
+    if(length(dates2)>0) {
+      firstDay2 <- head(triggerDates2, 1)
+      if(firstDay2$under2SD == 1) {
+        dates2 <- append(firstDay2$date, dates2)
+      }
+    }
+    
+    
+    
+    SD1header <- data.frame(start='-1SD',end='',
+                            Year1='', SectorYr1='',
+                            Year2='', SectorYr2='',
+                            Year3='', SectorYr3='')
     SD1data <- getBacktest(df, dates1, ticker)
+    SD1data$start <- as.character(SD1data$start)
+    SD1data$end <- as.character(SD1data$end)
+    SD1data <- rbind(SD1header, SD1data)
+    
+    
+  
+    SD2header <- data.frame(start='-2SD',end='',
+                            Year1='', SectorYr1='',
+                            Year2='', SectorYr2='',
+                            Year3='', SectorYr3='')
     SD2data <- getBacktest(df, dates2, ticker)
+    if(nrow(SD2data)>0) {
+      SD2data$start <- as.character(SD2data$start)
+      SD2data$end <- as.character(SD2data$end)
+      SD2data <- rbind(SD2header, SD2data)
+      }
 
-    # make adjustmets here....
+    
+ 
     val <- rbind(SD1data, SD2data)
-    #val <- as.data.frame(val)
+    val <- as.data.frame(val)
     datatable(val, filter = 'none',
               options = list(dom = 't',
-                             columnDefs = list(list(className = 'dt-center',
-                                                    targets = 0:6))))
+              
+              columnDefs = list(list(className = 'dt-center',
+              targets = 0:6))))
 
   })
 
@@ -483,10 +527,89 @@ shinyServer(function(input, output) {
                                                     targets = 0:6))))
   })
   
-  # output$backtest_downside < - renderDataTable({
-  #   
-  #   
-  #   
-  # })
+  output$backtest_downside <- renderDataTable({
+    ticker <- paste0(toupper(input$ticker), '-US')
+    trailPeriods <- 20
+    df <- timeSeries_stock_down()
+    #df <- df[, c('date', 'Close')]
+
+    avg <- mean(df)
+    trigger1 <- avg - sd(df)
+    trigger2 <- avg - 2*sd(df)
+
+    temp <- data.frame(date = index(df), coredata(df))
+
+    #df <- as.data.frame(df)
+    temp <- temp %>%
+      select(date, Close) %>%
+      mutate(tma = rollmean(Close, k = trailPeriods, fill = NA, align = "right"))
+
+    # examine -1SD
+    triggerDates1 <- filter(temp, tma < trigger1 & tma > trigger2)
+
+    triggerDates1 <- triggerDates1 %>%
+      mutate(under1SD=ifelse(date - lag(date, 1) < 4,1,0))
+    #triggerDates1[is.na(triggerDates1)] = 0
+    triggerDates1 <- triggerDates1[complete.cases(triggerDates1), ]
+
+    changeDates1 <- triggerDates1 %>%  filter(under1SD==1 & lag(under1SD,1)==0)
+    dates1 <- changeDates1$date
+
+    # add potential 1st date if it is under 1SD
+    if(length(dates1)>0) {
+      firstDay1 <- head(triggerDates1, 1)
+      if(firstDay1$under1SD == 1) {
+        dates1 <- append(firstDay1$date, dates1)
+      }
+    }
+    
+    # examine -2SD
+    triggerDates2 <- filter(temp, tma < trigger2)
+    triggerDates2 <- triggerDates2 %>%
+      mutate(under2SD=ifelse(date - lag(date, 1) < 4,1,0))
+    #triggerDates2[is.na(triggerDates2)] = 0
+    triggerDates2 <- triggerDates2[complete.cases(triggerDates2), ]
+    
+    changeDates2 <- triggerDates2 %>%  filter(under2SD==1 & lag(under2SD,1)==0)
+    dates2 <- changeDates2$date
+
+    # add potential 1st date if it is under 2SD
+    if(length(dates2)>0) {
+      firstDay2 <- head(triggerDates2, 1)
+      if(firstDay2$under2SD == 1) {
+        dates2 <- append(firstDay2$date, dates2)
+      }
+    }
+    
+    SD1header <- data.frame(start='-1SD',end='',
+                            Year1='', SectorYr1='',
+                            Year2='', SectorYr2='',
+                            Year3='', SectorYr3='')
+    SD1data <- getBacktest(df, dates1, ticker)
+    SD1data$start <- as.character(SD1data$start)
+    SD1data$end <- as.character(SD1data$end)
+    SD1data <- rbind(SD1header, SD1data)
+    
+    SD2header <- data.frame(start='-2SD',end='',
+                            Year1='', SectorYr1='',
+                            Year2='', SectorYr2='',
+                            Year3='', SectorYr3='')
+    SD2data <- getBacktest(df, dates2, ticker)
+    if(nrow(SD2data)>0) {
+      SD2data$start <- as.character(SD2data$start)
+      SD2data$end <- as.character(SD2data$end)
+      SD2data <- rbind(SD2header, SD2data)
+    }
+    
+    
+    val <- rbind(SD1data, SD2data)
+    val <- as.data.frame(val)
+    datatable(val, filter = 'none',
+              options = list(dom = 't',
+                             columnDefs = list(list(className = 'dt-center',
+                                                    targets = 0:6))))
+
+
+   })
   
 })
