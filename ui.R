@@ -37,7 +37,8 @@ shinyUI(fluidPage(
                                "P/CF"= "P/CF",
                                "EV/Sales" = "EV/Sales" ,
                                "EV/EBITDA" = "EV/EBITDA",
-                               "EV/EBITDA vs S&P500" = "EV/EBITDA vs S&P500"
+                               "EV/EBITDA vs S&P500" = "EV/EBITDA vs S&P500"#,
+                               #"Div Yield" = "Div Yield"
                    ),
                    selected = "P/E",
                    status = "warning"
@@ -83,7 +84,8 @@ shinyUI(fluidPage(
                              "P/CF"= "P/CF",
                              "EV/Sales" = "EV/Sales" ,
                              "EV/EBITDA" = "EV/EBITDA",
-                             "EV/EBITDA vs S&P500" = "EV/EBITDA vs S&P500"
+                             "EV/EBITDA vs S&P500" = "EV/EBITDA vs S&P500"#,
+                             #"Div Yield" = "Div Yield"
                  ),
                  selected = "P/E",
                  status = "warning"
@@ -113,7 +115,8 @@ shinyUI(fluidPage(
                 ),
                 tabPanel(
                   title = 'Backtest',
-                  dataTableOutput('table_downside')
+                  dataTableOutput('table_downside'),
+                  dataTableOutput('backtest_downside')
                 )
               )
              )
