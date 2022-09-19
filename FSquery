@@ -1,5 +1,5 @@
 
-
+cal <-  create.calendar(name = "mycal", weekdays=c("saturday", "sunday"))
 
 
 FSquery <- function(ticker, formula, startDay, endDay) {
@@ -217,12 +217,12 @@ getBacktest <- function(timeSeries, dates, ticker) {
     
     temp <- data.frame(start=startDate, 
                        end=yr3Date,
-                       Year1=Yr1return,
-                       SectorYr1=Yr1SectorReturn,
-                       Year2=Yr2return,
-                       SectorYr2=Yr2SectorReturn,
-                       Year3=Yr3return,
-                       SectorYr3=Yr3SectorReturn)
+                       Year1=round(Yr1return,3)*100,
+                       SectorYr1=round(Yr1SectorReturn,3)*100,
+                       Year2=round(Yr2return,3)*100,
+                       SectorYr2=round(Yr2SectorReturn,3)*100,
+                       Year3=round(Yr3return,3)*100,
+                       SectorYr3=round(Yr3SectorReturn,3)*100)
     if(nrow(result)==0) {result <- temp} else {result <- rbind(result, temp)}
     #print(temp)
     #Sys.sleep(5)
