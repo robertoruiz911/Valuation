@@ -14,6 +14,7 @@ library(httr)
 library(jsonlite)
 library(padr)
 library(DT)
+
 library(PerformanceAnalytics)
 #library(chron)
 source('FSquery.R')
@@ -23,7 +24,10 @@ source('FSquery.R')
 shinyServer(function(input, output) {
   
   
-  timeSeries_stock_up <- reactive({
+  
+  
+  
+  timeSeries_stock_up <- eventReactive(input$Calculate,{
     
     ticker <- paste0(toupper(input$ticker), '-US')
     
@@ -89,7 +93,7 @@ shinyServer(function(input, output) {
   
   
   
-  timeSeries_stock_down <- reactive({
+  timeSeries_stock_down <- eventReactive(input$Calculate, {
 
     ticker <- paste0(toupper(input$ticker), '-US')
 
@@ -151,6 +155,11 @@ shinyServer(function(input, output) {
     colnames(timeSeriesDown)[1] <- 'Close'
     timeSeriesDown
   })
+  
+  
+  
+  #### Until here should be the eventReactive
+  
   
   # plots the up chart
   output$plot_up <- renderPlot({
